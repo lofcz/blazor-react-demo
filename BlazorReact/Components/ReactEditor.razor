@@ -1,0 +1,115 @@
+@inject IJSRuntime Js
+@implements IAsyncDisposable
+@code {
+
+    [Parameter]
+    public string Value { get; set; } = string.Empty;
+    [Parameter]
+    public EventCallback<string> ValueChanged { get; set; }
+
+    // two-way binding
+    string lastValue = string.Empty;
+    bool syncing;
+    
+    // prefix kvůli validnímu js id, musí začínat písmenem, ne číslem
+    readonly string id = $"randomId_{Guid.NewGuid().ToString().Replace("-", string.Empty)}";
+
+    // js->c# komunikace
+    DotNetObjectReference<ReactEditor>? jsRef;
+    
+    // c#->js komunikace
+    IJSObjectReference? jsObjectRef;
+
+    protected override void OnInitialized()
+    {
+        base.OnInitialized();
+        lastValue = Value;
+        jsRef = DotNetObjectReference.Create(this);
+    }
+
+    protected override async Task OnParametersSetAsync()
+    {
+        await base.OnParametersSetAsync();
+
+        if (!syncing && Value != lastValue)
+        {
+            lastValue = Value;
+
+            if (jsObjectRef is not null)
+            {
+                try
+                {
+                    await jsObjectRef.InvokeVoidAsync("SetContent", new
+                    {
+                        id,
+                        content = Value
+                    });
+                }
+                catch (Exception e)
+                {
+                    
+                }
+            }
+        }
+    }
+
+    [JSInvokable]
+    public async Task JsContentChanged(string value)
+    {
+        syncing = true;
+        Value = value;
+        lastValue = value;
+        syncing = false;
+
+        await ValueChanged.InvokeAsync(value);
+    }
+
+    protected override async Task OnAfterRenderAsync(bool firstRender)
+    {
+        if (firstRender)
+        {
+            try
+            {
+                // InvokeAsync volá arg1 funkci na window s argumenty arg2+, tzn. import("./Scripts/reactEditor.js")
+                jsObjectRef = await Js.InvokeAsync<IJSObjectReference>("import", $"./Scripts/reactEditor.js");
+
+                // IJSObjectReference se chová stejně jako IJS, ale na daném objektu místo window 
+                await jsObjectRef.InvokeVoidAsync("Init", new
+                {
+                    id,
+                    net = jsRef,
+                    defaultContent = Value
+                });
+            }
+            catch (Exception e) // buď JSDisconnectedException (klient zahájil navigaci ve chvíli, kdy běží interop), nebo generická chyba, pokud je něco špatně na straně js, mimo try-catch
+            {
+            }
+        }
+    }
+
+    public async ValueTask DisposeAsync()
+    {
+        // lze bezpečně uvolnit
+        jsRef?.Dispose();
+        
+        // může spadnout, pokud klient právě naviguje
+        if (jsObjectRef is not null)
+        {
+            try
+            {
+                await jsObjectRef.InvokeVoidAsync("Dispose", new
+                {
+                    id
+                });
+                await jsObjectRef.DisposeAsync();
+            }
+            catch (Exception e)
+            {
+            
+            }   
+        }
+    }
+}
+
+@* obsah elementu slouží jako react island *@
+<div id="@id"></div>

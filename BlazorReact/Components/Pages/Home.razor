@@ -1,0 +1,16 @@
+﻿@page "/"
+@code {
+    string value = "Hello world";
+
+    void SetValue()
+    {
+        value = "Testovni nastavena hodnota";
+    }
+}
+
+<div style="height: 300px; width: 600px; border: 1px solid black;">
+    <ReactEditor @bind-Value="@value"/>
+</div>
+
+<div>Hodnota: @((MarkupString)value)</div>
+<button @onclick="SetValue">Nastavit hodnotu</button>

@@ -1,0 +1,21 @@
+﻿<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <base href="/"/>
+    <link rel="stylesheet" href="@Assets["app.css"]"/>
+    <link rel="stylesheet" href="@Assets["BlazorReact.styles.css"]"/>
+    <ImportMap/>
+    <HeadOutlet @rendermode="InteractiveServer"/>
+
+    <script src="https://unpkg.com/nanomcf"></script>
+</head>
+
+<body>
+<Routes @rendermode="InteractiveServer"/>
+<script src="_framework/blazor.web.js"></script>
+</body>
+
+</html>
